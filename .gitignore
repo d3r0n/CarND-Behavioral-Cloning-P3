@@ -1,2 +1,6 @@
 input*
 windows_sim
+output*
+__pycache__
+out
+*.npy

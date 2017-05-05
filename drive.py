@@ -13,8 +13,10 @@ from flask import Flask
 from io import BytesIO
 
 from keras.models import load_model
+from keras.models import model_from_yaml
 import h5py
 from keras import __version__ as keras_version
+from layers import Grayscale
 
 sio = socketio.Server()
 app = Flask(__name__)
@@ -119,7 +121,8 @@ if __name__ == '__main__':
         print('You are using Keras version ', keras_version,
               ', but the model was built using ', model_version)
 
-    model = load_model(args.model)
+    model = model_from_yaml(open(args.model)).read(), custom_objects={"Grayscale":Grayscale})
+    model.load_weights(args.model))
 
     if args.image_folder != '':
         print("Creating image folder at {}".format(args.image_folder))

@@ -1,26 +1,129 @@
+# %% INPUT LOADING FUNCTIONS
 import csv
 import os
-import tensorflow as tf
 import cv2
+import numpy as np
 
-flags = tf.app.flags
-FLAGS = flags.FLAGS
-# command line flags
-flags.DEFINE_string('src', '', "Srouce folder")
+default_src = './input/'
+if os.name == 'nt':
+    default_src = '.\\input\\'
 
-def read_lines(src = FLAGS.src + 'driving_log.csv'):
-    lines = []
+
+class Data:
+    X_train = None
+    y_train = None
+
+    def __init__(self, images, measurments):
+        self.X_train = images
+        self.y_train = measurments
+
+    @classmethod
+    def fromLists(self, images, measurments):
+        X_train = np.array(images)
+        y_train = np.array(measurments)
+        return self(X_train, y_train)
+
+    @classmethod
+    def fromFile(self):
+        X_train = np.load("X_train.npy")
+        y_train = np.load("y_train.npy")
+        return self(X_train, y_train)
+
+    def save(self):
+        np.save("X_train", self.X_train)
+        np.save("y_train", self.y_train)
+
+
+class Input:
+    images = []
+    measurments = []
+
+    def add_sample(self, image_src, measurment):
+        image = cv2.imread(image_src)
+        self.__add(image, measurment)
+        #Add flipped image
+        self.__add(np.fliplr(image), -measurment)
+
+    def __add(self, image, measurment):
+        self.images.append(image)
+        self.measurments.append(measurment)
+
+    def data(self):
+        return Data.fromLists(self.images, self.measurments)
+
+
+def read_input(src=default_src + 'driving_log.csv'):
+    input = Input()
+    print('reading csv from ' + src)
     with open(src) as csv_file:
         reader = csv.reader(csv_file)
         for line in reader:
-            lines.append(line)
-    return lines
+            steering_center = float(line[3])
+            # create adjusted steering measurements for the side camera images
+            correction = 0.25  # parameter to tune
+            steering_left = steering_center + correction
+            steering_right = steering_center - correction
 
-def main(_):
-    lines = read_lines()
-    print(lines[0])
-    print(lines[2])
+            image_center = line[0]
+            input.add_sample(image_center, steering_center)
 
-# parses flags and calls the `main` function above
-if __name__ == '__main__':
-    tf.app.run()
+            image_left = line[1]
+            input.add_sample(image_left, steering_left)
+
+            image_right = line[2]
+            input.add_sample(image_right, steering_right)
+
+    return input
+
+
+# %% LOAD DATA
+# input = read_input()
+# data = input.data()
+# data.save()
+
+# %% LOAD DATA
+data = Data.fromFile()
+
+# %% RUN MODEL
+import tensorflow as tf
+from keras.models import Sequential
+from keras.layers import Flatten, Dense, Lambda, Cropping2D, BatchNormalization
+from keras.layers.convolutional import Convolution2D
+from keras.layers.pooling import MaxPooling2D
+from layers import Grayscale
+
+model = Sequential()
+model.add(Cropping2D(cropping=((50, 20), (0, 0)), input_shape=(160, 320, 3)))
+model.add(Grayscale())
+model.add(BatchNormalization(axis=1)) #same as: model.add(Lambda(lambda x: x / 127 - 1, input_shape=(160, 320, 3)))
+model.add(Convolution2D(24, (5, 5), strides=(2, 2), activation='relu'))
+model.add(Convolution2D(36, (5, 5), strides=(2, 2), activation='relu'))
+model.add(Convolution2D(48, (5, 5), strides=(2, 2), activation='relu'))
+model.add(Convolution2D(64, (3, 3), activation='relu'))
+model.add(Convolution2D(64, (3, 3), activation='relu'))
+model.add(Flatten())
+model.add(Dense(1164))
+model.add(Dense(100))
+model.add(Dense(50))
+model.add(Dense(10))
+model.add(Dense(1))
+
+# %% PAINT MODEL
+from keras.utils import plot_model
+plot_model(model, to_file='model.png',show_shapes=True)
+
+# %%  COMPILE & RUN MODEL
+import multi_gpu as mgpu
+from keras.callbacks import EarlyStopping
+
+# model = mgpu.make_parallel(model,2) #enable parallel gpu
+model.compile(loss='mse', optimizer='adam')
+
+earlyStopping=EarlyStopping(monitor='val_loss', min_delta=0.001, patience= 0, verbose=0, mode='auto')
+model.fit(
+    data.X_train, data.y_train, validation_split=0.2, shuffle=True, epochs=1, callbacks=[earlyStopping])
+
+# %% SAVE MODEL
+with open("output/model.yaml", "w") as yaml_file:
+    yaml_file.write(model.to_yaml())
+model.save('output/model.h5')
