@@ -113,7 +113,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # check that model Keras version is same as local Keras version
-    f = h5py.File(args.model, mode='r')
+    f = h5py.File(args.model + '.h5', mode='r')
     model_version = f.attrs.get('keras_version')
     keras_version = str(keras_version).encode('utf8')
 
@@ -121,8 +121,8 @@ if __name__ == '__main__':
         print('You are using Keras version ', keras_version,
               ', but the model was built using ', model_version)
 
-    model = model_from_yaml(open(args.model)).read(), custom_objects={"Grayscale":Grayscale})
-    model.load_weights(args.model))
+    model = model_from_yaml(open(args.model + '.yaml').read(), custom_objects={"Grayscale":Grayscale})
+    model.load_weights(args.model + '.h5')
 
     if args.image_folder != '':
         print("Creating image folder at {}".format(args.image_folder))

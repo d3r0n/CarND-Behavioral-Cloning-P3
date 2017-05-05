@@ -1,9 +1,20 @@
-# %% INPUT LOADING FUNCTIONS
+# %% IMPORTS
+from keras.utils import plot_model
+import matplotlib.pyplot as plt
+import multi_gpu as mgpu
+from keras.callbacks import EarlyStopping
 import csv
 import os
 import cv2
 import numpy as np
+import tensorflow as tf
+from keras.models import Sequential, Model
+from keras.layers import Flatten, Dense, Lambda, Cropping2D, BatchNormalization
+from keras.layers.convolutional import Convolution2D
+from keras.layers.pooling import MaxPooling2D
+from layers import Grayscale
 
+# %% INPUT LOADING FUNCTIONS
 default_src = './input/'
 if os.name == 'nt':
     default_src = '.\\input\\'
@@ -76,6 +87,22 @@ def read_input(src=default_src + 'driving_log.csv'):
     return input
 
 
+def plot_loss(history_object, to_file):
+    plt.plot(history_object.history['loss'])
+    plt.plot(history_object.history['val_loss'])
+    plt.title('model mean squared error loss')
+    plt.ylabel('mean squared error loss')
+    plt.xlabel('epoch')
+    plt.legend(['training set', 'validation set'], loc='upper right')
+    plt.savefig(to_file)
+
+
+def save_model(model, to_file):
+    with open(to_file + '.yaml', "w") as yaml_file:
+        yaml_file.write(model.to_yaml())
+    model.save(to_file + '.h5')
+
+
 # %% LOAD DATA
 # input = read_input()
 # data = input.data()
@@ -84,18 +111,13 @@ def read_input(src=default_src + 'driving_log.csv'):
 # %% LOAD DATA
 data = Data.fromFile()
 
-# %% RUN MODEL
-import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import Flatten, Dense, Lambda, Cropping2D, BatchNormalization
-from keras.layers.convolutional import Convolution2D
-from keras.layers.pooling import MaxPooling2D
-from layers import Grayscale
-
+# %% MAKE MODEL
 model = Sequential()
 model.add(Cropping2D(cropping=((50, 20), (0, 0)), input_shape=(160, 320, 3)))
 model.add(Grayscale())
-model.add(BatchNormalization(axis=1)) #same as: model.add(Lambda(lambda x: x / 127 - 1, input_shape=(160, 320, 3)))
+model.add(
+    BatchNormalization(axis=1)
+)  #same as: model.add(Lambda(lambda x: x / 127 - 1, input_shape=(160, 320, 1)))
 model.add(Convolution2D(24, (5, 5), strides=(2, 2), activation='relu'))
 model.add(Convolution2D(36, (5, 5), strides=(2, 2), activation='relu'))
 model.add(Convolution2D(48, (5, 5), strides=(2, 2), activation='relu'))
@@ -107,23 +129,26 @@ model.add(Dense(100))
 model.add(Dense(50))
 model.add(Dense(10))
 model.add(Dense(1))
+plot_model(model, to_file='output/model.png', show_shapes=True)
 
-# %% PAINT MODEL
-from keras.utils import plot_model
-plot_model(model, to_file='model.png',show_shapes=True)
-
-# %%  COMPILE & RUN MODEL
-import multi_gpu as mgpu
-from keras.callbacks import EarlyStopping
-
+# %% COMPILE MODEL
 # model = mgpu.make_parallel(model,2) #enable parallel gpu
 model.compile(loss='mse', optimizer='adam')
 
-earlyStopping=EarlyStopping(monitor='val_loss', min_delta=0.001, patience= 0, verbose=0, mode='auto')
-model.fit(
-    data.X_train, data.y_train, validation_split=0.2, shuffle=True, epochs=1, callbacks=[earlyStopping])
+# %% RUN MODEL
+earlyStopping = EarlyStopping(
+    monitor='val_loss', min_delta=0.001, patience=2, verbose=0, mode='auto')
+history_object = model.fit(
+    data.X_train,
+    data.y_train,
+    validation_split=0.2,
+    shuffle=True,
+    epochs=10,
+    callbacks=[earlyStopping])
 
 # %% SAVE MODEL
-with open("output/model.yaml", "w") as yaml_file:
-    yaml_file.write(model.to_yaml())
-model.save('output/model.h5')
+plot_loss(history_object, to_file="output/loss.png")
+save_model(model, to_file="output/model")
+
+# TO START SERVER CALL
+# python drive.py output\model

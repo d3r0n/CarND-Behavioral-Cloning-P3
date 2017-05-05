@@ -4,12 +4,13 @@ from keras.models import Model
 
 import tensorflow as tf
 
+
 def make_parallel(model, gpu_count):
     def get_slice(data, idx, parts):
         import tensorflow as tf
         shape = tf.shape(data)
-        size = tf.concat([ shape[:1] // parts, shape[1:] ],axis=0)
-        stride = tf.concat([ shape[:1] // parts, shape[1:]*0 ],axis=0)
+        size = tf.concat([shape[:1] // parts, shape[1:]], axis=0)
+        stride = tf.concat([shape[:1] // parts, shape[1:] * 0], axis=0)
         start = stride * idx
         return tf.slice(data, start, size)
 
@@ -26,7 +27,11 @@ def make_parallel(model, gpu_count):
                 #Slice each input into a piece for processing on this GPU
                 for x in model.inputs:
                     input_shape = tuple(x.get_shape().as_list())[1:]
-                    slice_n = Lambda(get_slice, output_shape=input_shape, arguments={'idx':i,'parts':gpu_count})(x)
+                    slice_n = Lambda(
+                        get_slice,
+                        output_shape=input_shape,
+                        arguments={'idx': i,
+                                   'parts': gpu_count})(x)
                     inputs.append(slice_n)
 
                 outputs = model(inputs)
@@ -43,5 +48,5 @@ def make_parallel(model, gpu_count):
         merged = []
         for outputs in outputs_all:
             # merged.append(merge(outputs, mode='concat', concat_axis=0))
-            merged.append(concatenate(inputs = outputs, axis = 0))
+            merged.append(concatenate(inputs=outputs, axis=0))
         return Model(inputs=model.inputs, outputs=merged)

@@ -1,6 +1,7 @@
 input*
 windows_sim
-output*
+*.h5
+*.yaml
 __pycache__
 out
 *.npy
