@@ -23,7 +23,7 @@ def main(_):
         for line in reader:
             for i in range(3):
                 line[i] = "input/IMG/" + line[i].split(slash)[-1]
-            writer.writerow(line.rstrip())
+            writer.writerow(line)
 
 
 # parses flags and calls the `main` function above

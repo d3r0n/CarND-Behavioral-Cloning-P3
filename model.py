@@ -12,12 +12,16 @@ from keras.models import Sequential, Model
 from keras.layers import Flatten, Dense, Lambda, Cropping2D, BatchNormalization
 from keras.layers.convolutional import Convolution2D
 from keras.layers.pooling import MaxPooling2D
+from keras import optimizers
 from layers import Grayscale
+import h5py
 
 # %% INPUT LOADING FUNCTIONS
-default_src = './input/'
+input_dir = './input_v1/'
+output_dir = './output/'
 if os.name == 'nt':
-    default_src = '.\\input\\'
+    input_dir = '.\\input_v1\\'
+    output_dir = '.\\output\\'
 
 
 class Data:
@@ -36,14 +40,15 @@ class Data:
 
     @classmethod
     def fromFile(self):
-        X_train = np.load("X_train.npy")
-        y_train = np.load("y_train.npy")
-        return self(X_train, y_train)
+        with h5py.File(input_dir + 'input.h5', 'r') as hf:
+            X_train = hf['X_train'][:]
+            y_train = hf['y_train'][:]
+            return self(X_train, y_train)
 
     def save(self):
-        np.save("X_train", self.X_train)
-        np.save("y_train", self.y_train)
-
+        with h5py.File(input_dir + 'input.h5', 'w') as hf:
+            hf.create_dataset("X_train",  data=self.X_train)
+            hf.create_dataset("y_train",  data=self.y_train)
 
 class Input:
     images = []
@@ -53,7 +58,7 @@ class Input:
         image = cv2.imread(image_src)
         self.__add(image, measurment)
         #Add flipped image
-        self.__add(np.fliplr(image), -measurment)
+        # self.__add(np.fliplr(image), -measurment)
 
     def __add(self, image, measurment):
         self.images.append(image)
@@ -63,7 +68,7 @@ class Input:
         return Data.fromLists(self.images, self.measurments)
 
 
-def read_input(src=default_src + 'driving_log.csv'):
+def read_input(src=input_dir + 'driving_log.csv'):
     input = Input()
     print('reading csv from ' + src)
     with open(src) as csv_file:
@@ -103,17 +108,17 @@ def save_model(model, to_file):
     model.save(to_file + '.h5')
 
 
-# %% LOAD DATA
+# %% LOAD DATA FROM CSV
 # input = read_input()
 # data = input.data()
 # data.save()
 
-# %% LOAD DATA
+# %% LOAD DATA FROM NPY
 data = Data.fromFile()
 
 # %% MAKE MODEL
 model = Sequential()
-model.add(Cropping2D(cropping=((50, 20), (0, 0)), input_shape=(160, 320, 3)))
+model.add(Cropping2D(cropping=((32, 20), (0, 0)), input_shape=(160, 320, 3)))
 model.add(Grayscale())
 model.add(
     BatchNormalization(axis=1)
@@ -129,15 +134,17 @@ model.add(Dense(100))
 model.add(Dense(50))
 model.add(Dense(10))
 model.add(Dense(1))
-plot_model(model, to_file='output/model.png', show_shapes=True)
+plot_model(model, to_file=output_dir + 'model.png', show_shapes=True)
 
 # %% COMPILE MODEL
 # model = mgpu.make_parallel(model,2) #enable parallel gpu
-model.compile(loss='mse', optimizer='adam')
+adam = optimizers.adam(lr=0.0001)
+model.compile(loss='mse', optimizer=adam)
 
 # %% RUN MODEL
 earlyStopping = EarlyStopping(
     monitor='val_loss', min_delta=0.001, patience=2, verbose=0, mode='auto')
+
 history_object = model.fit(
     data.X_train,
     data.y_train,
@@ -147,8 +154,8 @@ history_object = model.fit(
     callbacks=[earlyStopping])
 
 # %% SAVE MODEL
-plot_loss(history_object, to_file="output/loss.png")
-save_model(model, to_file="output/model")
+plot_loss(history_object, to_file=output_dir + 'loss.png')
+save_model(model, to_file=output_dir + 'model')
 
-# TO START SERVER CALL
+# TO START SERVER DO CALL
 # python drive.py output\model
