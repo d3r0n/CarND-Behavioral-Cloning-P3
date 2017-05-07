@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 from keras import optimizers
 from keras.callbacks import EarlyStopping
-from keras.layers import BatchNormalization, Cropping2D, Dense, Flatten, Lambda
+from keras.layers import BatchNormalization, Cropping2D, Dense, Flatten, Lambda, ELU
 from keras.layers.convolutional import Convolution2D
 from keras.layers.pooling import MaxPooling2D
 from keras.models import Model, Sequential
@@ -31,24 +31,25 @@ def save_model(model, to_file):
     model.save(to_file + '.h5')
 
 
+# %% LOAD AND SAVE INPUT DATA
+# input_dir = './input_v1/'
+# output_dir = './output/'
+# input = Input.fromFile(input_dir)
+# data = Data(input)
+# data.save(input_dir)
+
+# %% LOAD INPUT DATA
 input_dir = './input_v1/'
 output_dir = './output/'
-
-# %% INPUT DATA
-input = Input.fromFile(input_dir)
-data = Data(input)
-data.save(input_dir)
-
-# %% INPUT DATA
-data = Data.fromfile()
+data = Data.fromfile(input_dir)
 
 # %% MAKE MODEL
 model = Sequential()
 model.add(Cropping2D(cropping=((32, 20), (0, 0)), input_shape=(160, 320, 3)))
 model.add(Grayscale())
-model.add(
-    BatchNormalization(axis=1)
-)  #same as: model.add(Lambda(lambda x: x / 127 - 1, input_shape=(160, 320, 1)))
+#BatchNormalization gives same result as using:
+#model.add(Lambda(lambda x: x / 127 - 1, input_shape=(160, 320, 1)))
+model.add(BatchNormalization(axis=1))
 model.add(Convolution2D(24, (5, 5), strides=(2, 2), activation='relu'))
 model.add(Convolution2D(36, (5, 5), strides=(2, 2), activation='relu'))
 model.add(Convolution2D(48, (5, 5), strides=(2, 2), activation='relu'))
@@ -70,12 +71,12 @@ model.compile(loss='mse', optimizer=adam)
 earlyStopping = EarlyStopping(
     monitor='val_loss', min_delta=0.001, patience=2, verbose=0, mode='auto')
 
-history_object = model.fit(
-    data.X_train,
-    data.y_train,
-    validation_split=0.2,
-    shuffle=True,
-    epochs=10,
+history_object = model.fit_genera
+    data.train_generator,
+    steps_per_epoch = data.n_train_samples,
+    validation_data = data.validation_generator,
+    validation_steps = data.n_valid_samples,
+    epchos = 10,
     callbacks=[earlyStopping])
 
 # %% SAVE MODEL
