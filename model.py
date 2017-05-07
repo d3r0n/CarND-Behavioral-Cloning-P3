@@ -11,7 +11,6 @@ from keras.utils import plot_model
 import multi_gpu as mgpu
 from data import Data, Input
 
-
 def plot_loss(history_object, to_file):
     plt.plot(history_object.history['loss'])
     plt.plot(history_object.history['val_loss'])
@@ -44,8 +43,7 @@ data = Data.from_file(input_dir)
 model = Sequential()
 model.add(Cropping2D(cropping=((32, 20), (0, 0)), input_shape=(160, 320, 3)))
 #model.add(Grayscale())
-model.add(
-    Convolution2D(1, (1, 1), name='color_space_convolution', activation='elu'))
+model.add(Convolution2D(1, (1,1), name='color_space_convolution', activation='elu'))
 #BatchNormalization gives same result as using:
 #model.add(Lambda(lambda x: x / 127 - 1, input_shape=(160, 320, 1)))
 model.add(BatchNormalization(axis=1, name='pixel_normalization'))
@@ -74,7 +72,8 @@ model.add(Dropout(0.5))
 model.add(Dense(10))
 model.add(Dropout(0.5))
 model.add(Dense(1))
-plot_model(model, to_file=output_dir + 'model.png', show_shapes=True)
+plot_model(model, to_file= output_dir + 'model.png', show_shapes=True)
+
 
 # %% COMPILE MODEL
 # model = mgpu.make_parallel(model,2) #enable parallel gpu
@@ -87,10 +86,10 @@ earlyStopping = EarlyStopping(
 
 history_object = model.fit_generator(
     data.train_generator,
-    steps_per_epoch=data.n_train_samples,
-    validation_data=data.validation_generator,
-    validation_steps=data.n_valid_samples,
-    epochs=10,
+    steps_per_epoch = data.n_train_steps,
+    validation_data = data.validation_generator,
+    validation_steps = data.n_valid_steps,
+    epochs = 10,
     callbacks=[earlyStopping])
 
 # %% SAVE MODEL

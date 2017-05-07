@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 from PIL import ImageEnhance
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
+from joblib import Parallel, delayed
 
 import cv2
 
@@ -55,12 +56,12 @@ class Input:
 
 
 class Data:
-    def __init__(self, input):
+    def __init__(self, input, batch_size = 250):
         self.input = input
         X_train_paths, X_valid_paths, y_train, y_valid = train_test_split(
             input.image_paths, input.measurments, test_size=0.2)
-        self.n_train_samples = len(X_train_paths)
-        self.n_valid_samples = len(X_valid_paths)
+        self.n_train_steps = int(round(len(X_train_paths) / batch_size))
+        self.n_valid_steps = int(round(len(X_valid_paths) / batch_size))
         self.train_generator = self.generator(X_train_paths, y_train)
         self.validation_generator = self.generator(X_valid_paths, y_valid)
 
@@ -78,21 +79,28 @@ class Data:
             hf.create_dataset("image_paths", data=self.input.image_paths)
             hf.create_dataset("measurments", data=self.input.measurments)
 
-    def generator(self, X_paths, y, batch_size=32):
+    def generator(self, X_paths, y, batch_size=256):
         num_samples = len(X_paths)
-        while 1:
-            X_paths, y = shuffle(X_paths, y)
-            for offset in range(0, num_samples, batch_size):
-                image_paths = X_paths[offset:offset + batch_size]
-                angles = y[offset:offset + batch_size]
+        transformator = Transformator(self.input)
 
-                images, angles = zip(*[
-                    self.transform(i, a) for i, a in zip(image_paths, angles)
-                ])
+        with Parallel(n_jobs=8) as parallel:
+            while 1:
+                X_paths, y = shuffle(X_paths, y)
+                for offset in range(0, num_samples, batch_size):
+                    image_paths = X_paths[offset:offset + batch_size]
+                    angles = y[offset:offset + batch_size]
 
-                X_batch = np.array(images)
-                y_batch = np.array(angles)
-                yield (X_batch, y_batch)
+                    images, angles = zip(*
+                        parallel(delayed(transformator.transform)(i, a) for i, a in zip(image_paths, angles))
+                    )
+
+                    X_batch = np.array(images)
+                    y_batch = np.array(angles)
+                    yield (X_batch, y_batch)
+
+class Transformator:
+    def __init__(self, input):
+        self.input = input
 
     def transform(self, image_path, angle):
         full_path = self.input.src + image_path.decode('UTF-8')
@@ -116,15 +124,15 @@ class Data:
         # spatial shear
         intensity = 0.1
         shear = np.random.uniform(-intensity, intensity)
-        shear_matrix = np.array([[1, -np.sin(shear), 0], [0, np.cos(shear), 0],
+        shear_matrix = np.array([[1, -np.sin(shear), 0],
+                                 [0, np.cos(shear), 0],
                                  [0, 0, 1]])
         transform_matrix = shear_matrix
 
         # random shift
         w_range = 0.15
         h_range = 0.15
-        shift_matrix, angle = self.random_shift_matrix(img, w_range, h_range,
-                                                       angle)
+        shift_matrix, angle = self.random_shift_matrix(img, w_range, h_range, angle)
         transform_matrix = np.dot(transform_matrix, shift_matrix)
 
         # perform transformation
@@ -139,10 +147,8 @@ class Data:
     def transform_img(self, transform_matrix, img):
         if transform_matrix is not None:
             h, w = img.shape[0], img.shape[1]
-            transform_matrix = transform_matrix_offset_center(
-                transform_matrix, h, w)
-            img = apply_transform(
-                img, transform_matrix, 2, fill_mode='nearest')
+            transform_matrix = transform_matrix_offset_center(transform_matrix, h, w)
+            img = apply_transform(img, transform_matrix, 2, fill_mode='nearest')
         return img
 
     def random_shift_matrix(self,
@@ -154,7 +160,9 @@ class Data:
         h, w = img.shape[0], img.shape[1]
         tx = np.random.uniform(-h_range, h_range) * h
         ty = np.random.uniform(-w_range, w_range) * w
-        transform_matrix = np.array([[1, 0, tx], [0, 1, ty], [0, 0, 1]])
+        transform_matrix = np.array([[1, 0, tx],
+                                     [0, 1, ty],
+                                     [0, 0, 1]])
 
         angle = angle - ty * pix_to_angle
         return transform_matrix, angle
@@ -182,4 +190,17 @@ def plot_example_batch(plot_name='example',
     save_plot(imges, angles, output_dir + plot_name)
 
 
-plot_example_batch()
+# if __name__ == '__main__':
+#     #since generator is cpu not gpu we would like to parallel it
+#     #sample test
+#     input_dir='input_v1/'
+#     output_dir='output/'
+#     data = Data.from_file(input_dir)
+#     tgen = data.train_generator
+#
+#     n = 0
+#     for (a,i) in tgen:
+#         n += 1
+#         print('next batch '+ str(n))
+#
+#     print('finish')
