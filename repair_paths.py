@@ -1,5 +1,6 @@
 import csv
 import os
+
 import tensorflow as tf
 
 flags = tf.app.flags
@@ -17,12 +18,12 @@ def main(_):
     src = FLAGS.src + 'driving_log.csv'
     bcp = FLAGS.src + 'driving_log_bcp.csv'
     os.rename(src, bcp)
-    with open(bcp) as A, open(src, 'w+') as B:
+    with open(bcp) as A, open(src, 'w', newline='') as B:
         reader = csv.reader(A)
         writer = csv.writer(B)
         for line in reader:
             for i in range(3):
-                line[i] = "input/IMG/" + line[i].split(slash)[-1]
+                line[i] = "IMG/" + line[i].split(slash)[-1]
             writer.writerow(line)
 
 
