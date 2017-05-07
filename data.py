@@ -2,14 +2,17 @@ import csv
 import os
 
 import h5py
-from keras.preprocessing.image import load_img, img_to_array, flip_axis, random_shear, apply_transform, transform_matrix_offset_center
 import numpy as np
 import sklearn
+from keras.preprocessing.image import (apply_transform, flip_axis,
+                                       img_to_array, load_img, random_shear,
+                                       transform_matrix_offset_center)
+from matplotlib import pyplot as plt
+from PIL import ImageEnhance
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
+
 import cv2
-from PIL import ImageEnhance
-from matplotlib import pyplot as plt
 
 
 class Input:
@@ -27,7 +30,7 @@ class Input:
         self.measurments = measurments
 
     @classmethod
-    def fromFile(self, dir_src):
+    def from_file(self, dir_src):
         file = dir_src + 'driving_log.csv'
         print('reading input from ' + file)
         with open(file) as csv_file:
@@ -62,7 +65,7 @@ class Data:
         self.validation_generator = self.generator(X_valid_paths, y_valid)
 
     @classmethod
-    def fromFile(self, src):
+    def from_file(self, src):
         file = src + 'data.h5'
         with h5py.File(file) as hf:
             image_paths = hf['image_paths'][:]
@@ -101,6 +104,7 @@ class Data:
         img = enhancer.enhance(intensity)
 
         img = np.array(img)
+        # img = img_to_array(img)
 
         # flip image
         if np.random.random() < 0.5:
@@ -127,8 +131,8 @@ class Data:
         img = self.transform_img(transform_matrix, img)
 
         # crop
-        h, w = img.shape[0], img.shape[1]
-        img = img[20:-32, 0:w]
+        # h, w = img.shape[0], img.shape[1]
+        # img = img[20:-34, 0:w]
 
         return (img, angle)
 
@@ -171,8 +175,11 @@ def save_plot(images, angles, path):
 def plot_example_batch(plot_name='example',
                        input_dir='input_v1/',
                        output_dir='output/'):
-    data = Data.fromFile(input_dir)
+    data = Data.from_file(input_dir)
     tgen = data.train_generator
 
     imges, angles = tgen.__next__()
     save_plot(imges, angles, output_dir + plot_name)
+
+
+plot_example_batch()
