@@ -145,15 +145,15 @@ class Transformator:
         transform_matrix = None
 
         # spatial shear
-        intensity = 0.1
+        intensity = 0.05
         shear = np.random.uniform(-intensity, intensity)
         shear_matrix = np.array([[1, -np.sin(shear), 0], [0, np.cos(shear), 0],
                                  [0, 0, 1]])
         transform_matrix = shear_matrix
 
         # random shift
-        w_range = 0.15
-        h_range = 0.15
+        w_range = 0.1
+        h_range = 0.1
         shift_matrix, angle = self.random_shift_matrix(img, w_range, h_range,
                                                        angle)
         transform_matrix = np.dot(transform_matrix, shift_matrix)
@@ -162,8 +162,8 @@ class Transformator:
         img = self.transform_img(transform_matrix, img)
 
         # crop
-        # h, w = img.shape[0], img.shape[1]
-        # img = img[20:-34, 0:w]
+        h, w = img.shape[0], img.shape[1]
+        img = img[20:-34, 0:w]
 
         return (img, angle)
 
@@ -193,10 +193,10 @@ class Transformator:
 
 def save_plot(images, angles, path):
     fig = plt.figure(figsize=(16, 8))
-    for i in range(15):
+    for i in range(25):
         image = images[i]
         angle = angles[i]
-        plt.subplot(3, 5, i + 1)
+        plt.subplot(5, 5, i + 1)
         plt.imshow(image)
         plt.axis('off')
         plt.title(str(np.round(angle, 2)))
@@ -207,7 +207,9 @@ def plot_example_batch(plot_name='example',
                        input_dir='input_v1/',
                        output_dir='output/'):
     data = Data.from_file(input_dir)
-    tgen = data.train_generator
+    tgen = BatchGenerator(data,'training',25)
 
     imges, angles = tgen.__next__()
     save_plot(imges, angles, output_dir + plot_name)
+
+plot_example_batch()

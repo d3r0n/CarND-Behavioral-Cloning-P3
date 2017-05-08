@@ -62,6 +62,10 @@ def telemetry(sid, data):
         imgString = data["image"]
         image = Image.open(BytesIO(base64.b64decode(imgString)))
         image_array = np.asarray(image)
+        #crop
+        h, w = img_array.shape[0], img_array.shape[1]
+        img_array = img_array[20:-34, 0:w]
+        #predict
         steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
 
         throttle = controller.update(float(speed))
@@ -112,7 +116,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # check that model Keras version is same as local Keras version
-    f = h5py.File(args.model + '.h5', mode='r')
+    f = h5py.File(args.model, mode='r')
     model_version = f.attrs.get('keras_version')
     keras_version = str(keras_version).encode('utf8')
 
@@ -120,8 +124,7 @@ if __name__ == '__main__':
         print('You are using Keras version ', keras_version,
               ', but the model was built using ', model_version)
 
-    model = model_from_yaml(open(args.model + '.yaml').read(), custom_objects={"Grayscale":Grayscale})
-    model.load_weights(args.model + '.h5')
+    model = load_model(args.model)
 
     if args.image_folder != '':
         print("Creating image folder at {}".format(args.image_folder))
