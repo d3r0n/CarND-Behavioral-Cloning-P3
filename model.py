@@ -1,5 +1,7 @@
 # %% IMPORTS & SETTINGS
-import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg') #without this you need X server to run. FYI Amazon will fail.
+import matplotlib.pyplot as plt #this must be after matplotlib.use('Agg') !
 import numpy as np
 import tensorflow as tf
 from keras import optimizers
