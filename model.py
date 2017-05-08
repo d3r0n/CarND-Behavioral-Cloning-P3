@@ -50,35 +50,39 @@ model = Sequential()
 model.add(BatchNormalization(axis=1, name='pixel_normalization', input_shape=(106, 320, 3)))
 model.add(Convolution2D(1, (1, 1), name='color_space_convolution', activation='elu'))
 #Conv 1
-model.add(Convolution2D(24, (5, 5), strides=(1, 1), activation='elu'))
+model.add(Convolution2D(24, (5, 5), strides=(2, 2), activation='elu'))
 model.add(MaxPooling2D(pool_size=(2,2)))
 model.add(Dropout(0.9))
 #Conv 2
-model.add(Convolution2D(36, (5, 5), strides=(1, 1), activation='elu'))
-model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Convolution2D(36, (5, 5), strides=(2, 2), activation='elu'))
+# model.add(MaxPooling2D(pool_size=(2,2)))
 model.add(Dropout(0.9))
 #Conv 3
-model.add(Convolution2D(48, (5, 5), strides=(1, 1), activation='elu'))
-model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Convolution2D(48, (5, 5), strides=(2, 2), activation='elu'))
 model.add(Dropout(0.8))
 #Conv 4
 model.add(Convolution2D(64, (3, 3), activation='elu'))
-# model.add(MaxPooling2D(pool_size=(2,2)))
 model.add(Dropout(0.8))
 #Conv 5
-model.add(Convolution2D(64, (3, 3), activation='elu'))
-# model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Convolution2D(64, (2, 2), activation='elu'))
 model.add(Dropout(0.8))
+
 model.add(Flatten())
+
 model.add(Dense(1164, activation='elu'))
 model.add(Dropout(0.7))
+
 model.add(Dense(100, activation='elu'))
 model.add(Dropout(0.7))
+
 model.add(Dense(50, activation='elu'))
 model.add(Dropout(0.6))
+
 model.add(Dense(10, activation='elu'))
 model.add(Dropout(0.6))
+
 model.add(Dense(1))
+
 plot_model(model, to_file=output_dir + 'model.png', show_shapes=True)
 
 # %% COMPILE MODEL

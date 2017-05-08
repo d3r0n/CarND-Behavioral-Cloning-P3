@@ -211,5 +211,3 @@ def plot_example_batch(plot_name='example',
 
     imges, angles = tgen.__next__()
     save_plot(imges, angles, output_dir + plot_name)
-
-plot_example_batch()
