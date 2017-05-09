@@ -147,16 +147,25 @@ class Transformator:
         # spatial shear
         intensity = 0.05
         shear = np.random.uniform(-intensity, intensity)
-        shear_matrix = np.array([[1, -np.sin(shear), 0], [0, np.cos(shear), 0],
+        shear_matrix = np.array([[1, -np.sin(shear), 0],
+                                 [0, np.cos(shear), 0],
                                  [0, 0, 1]])
         transform_matrix = shear_matrix
 
         # random shift
         w_range = 0.1
         h_range = 0.1
-        shift_matrix, angle = self.random_shift_matrix(img, w_range, h_range,
-                                                       angle)
+        shift_matrix, new_angle = self.random_shift_matrix(img, w_range, h_range, angle)
+        if abs(new_angle) < 0.15 and np.random.random() < 0.5:
+                #since model might be biased thowrads driving staight (low angles)
+                #50% of low angle samples will be tranformed to higher
+                while (abs(new_angle) < 0.15):
+                    shift_matrix, new_angle =  self.random_shift_matrix(img, w_range, h_range, angle)
+                    w_range += 0.01
+
+        angle = new_angle
         transform_matrix = np.dot(transform_matrix, shift_matrix)
+
 
         # perform transformation
         img = self.transform_img(transform_matrix, img)
@@ -185,7 +194,9 @@ class Transformator:
         h, w = img.shape[0], img.shape[1]
         tx = np.random.uniform(-h_range, h_range) * h
         ty = np.random.uniform(-w_range, w_range) * w
-        transform_matrix = np.array([[1, 0, tx], [0, 1, ty], [0, 0, 1]])
+        transform_matrix = np.array([[1, 0, tx],
+                                     [0, 1, ty],
+                                     [0, 0, 1]])
 
         angle = angle - ty * pix_to_angle
         return transform_matrix, angle
