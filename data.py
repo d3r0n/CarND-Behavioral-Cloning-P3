@@ -135,7 +135,6 @@ class Transformator:
         img = enhancer.enhance(intensity)
 
         img = np.array(img)
-        # img = img_to_array(img)
 
         # flip image
         if np.random.random() < 0.5:
@@ -155,17 +154,19 @@ class Transformator:
         # random shift
         w_range = 0.1
         h_range = 0.1
-        shift_matrix, new_angle = self.random_shift_matrix(img, w_range, h_range, angle)
-        if abs(new_angle) < 0.15 and np.random.random() < 0.5:
-                #since model might be biased thowrads driving staight (low angles)
-                #50% of low angle samples will be tranformed to higher
-                while (abs(new_angle) < 0.15):
-                    shift_matrix, new_angle =  self.random_shift_matrix(img, w_range, h_range, angle)
-                    w_range += 0.01
+        pix_to_angle = None
+        direction = None
+        if abs(angle) <= 0.18:
+            w_range = 0.17
+            direction, pix_to_angle = 0, 0.002
+        else:
+            if np.random.uniform() < 0.5:
+                direction, pix_to_angle = -1, 0.003
+            else:
+                direction, pix_to_angle = 1, 0.004
 
-        angle = new_angle
+        shift_matrix, angle = self.random_shift_matrix(img, w_range, h_range, angle, direction, pix_to_angle)
         transform_matrix = np.dot(transform_matrix, shift_matrix)
-
 
         # perform transformation
         img = self.transform_img(transform_matrix, img)
@@ -179,10 +180,8 @@ class Transformator:
     def transform_img(self, transform_matrix, img):
         if transform_matrix is not None:
             h, w = img.shape[0], img.shape[1]
-            transform_matrix = transform_matrix_offset_center(
-                transform_matrix, h, w)
-            img = apply_transform(
-                img, transform_matrix, 2, fill_mode='nearest')
+            transform_matrix = transform_matrix_offset_center(transform_matrix, h, w)
+            img = apply_transform(img, transform_matrix, 2, fill_mode='nearest')
         return img
 
     def random_shift_matrix(self,
@@ -190,10 +189,18 @@ class Transformator:
                             w_range,
                             h_range,
                             angle,
+                            direction = 0,
                             pix_to_angle=0.004):
         h, w = img.shape[0], img.shape[1]
         tx = np.random.uniform(-h_range, h_range) * h
-        ty = np.random.uniform(-w_range, w_range) * w
+        sign = lambda x: (1, -1)[x<0]
+        if direction == 0:
+            ty = np.random.uniform(-w_range, w_range) * w
+        elif direction < 0:
+            ty = np.random.uniform(0, w_range) * w * sign(angle)
+        else:
+            ty = np.random.uniform(0, w_range) * w * -sign(angle)
+
         transform_matrix = np.array([[1, 0, tx],
                                      [0, 1, ty],
                                      [0, 0, 1]])
@@ -214,7 +221,7 @@ def save_plot(images, angles, path):
     plt.savefig(path)
 
 
-def plot_example_batch(plot_name='example',
+def plot_example_batch(plot_name='example_batch',
                        input_dir='input_v1/',
                        output_dir='output/'):
     data = Data.from_file(input_dir)
@@ -222,3 +229,36 @@ def plot_example_batch(plot_name='example',
 
     imges, angles = tgen.__next__()
     save_plot(imges, angles, output_dir + plot_name)
+
+def save_distribution(angles, path):
+    plt.hist(angles, bins=100)
+    plt.title("Angles distribution")
+    plt.xlabel("Angle")
+    plt.ylabel("Frequency")
+    plt.savefig(path)
+
+def to_list(np_arr):
+    np_arr.tolist()
+
+def plot_distribution(plot_name='distribution',
+                       input_dir='input_v6/',
+                       output_dir='output/'):
+    input = Input.from_file(input_dir)
+    data = Data(input)
+    tgen = BatchGenerator(data,'training',1000)
+
+    all_angles =[]
+    total = 0
+    three_epoches = 60000
+    all_angles = []
+    for images, angles in tgen:
+        if (total >= three_epoches):
+            break
+        total += angles.shape[0]
+        all_angles += angles.tolist()
+        print("%d / %d" % (total,three_epoches))
+    save_distribution(all_angles, output_dir + plot_name)
+
+if __name__ == "__main__":
+    # plot_example_batch()
+    plot_distribution()
