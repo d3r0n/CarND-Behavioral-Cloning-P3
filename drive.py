@@ -1,6 +1,8 @@
 import argparse
 import base64
 import os
+os.environ["CUDA_DEVICE_ORDER"] = "blahblah" # it will not find device and rollback to CPU
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import shutil
 from datetime import datetime
 from io import BytesIO

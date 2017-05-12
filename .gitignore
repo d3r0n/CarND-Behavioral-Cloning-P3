@@ -3,5 +3,7 @@ windows_sim
 *.h5
 *.yaml
 __pycache__
-out
+output*
+out*
+input*
 *.npy

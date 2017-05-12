@@ -154,18 +154,8 @@ class Transformator:
         # random shift
         w_range = 0.1
         h_range = 0.1
-        pix_to_angle = None
-        direction = None
-        if abs(angle) <= 0.18:
-            w_range = 0.17
-            direction, pix_to_angle = 0, 0.002
-        else:
-            if np.random.uniform() < 0.5:
-                direction, pix_to_angle = -1, 0.003
-            else:
-                direction, pix_to_angle = 1, 0.004
-
-        shift_matrix, angle = self.random_shift_matrix(img, w_range, h_range, angle, direction, pix_to_angle)
+        pix_to_angle = 0.0035
+        shift_matrix, angle = self.random_shift_matrix(img, w_range, h_range, angle, pix_to_angle)
         transform_matrix = np.dot(transform_matrix, shift_matrix)
 
         # perform transformation
@@ -189,17 +179,10 @@ class Transformator:
                             w_range,
                             h_range,
                             angle,
-                            direction = 0,
                             pix_to_angle=0.004):
         h, w = img.shape[0], img.shape[1]
         tx = np.random.uniform(-h_range, h_range) * h
-        sign = lambda x: (1, -1)[x<0]
-        if direction == 0:
-            ty = np.random.uniform(-w_range, w_range) * w
-        elif direction < 0:
-            ty = np.random.uniform(0, w_range) * w * sign(angle)
-        else:
-            ty = np.random.uniform(0, w_range) * w * -sign(angle)
+        ty = np.random.uniform(-w_range, w_range) * w
 
         transform_matrix = np.array([[1, 0, tx],
                                      [0, 1, ty],
@@ -249,7 +232,7 @@ def plot_distribution(plot_name='distribution',
 
     all_angles =[]
     total = 0
-    three_epoches = 60000
+    three_epoches = 30672
     all_angles = []
     for images, angles in tgen:
         if (total >= three_epoches):
@@ -260,5 +243,5 @@ def plot_distribution(plot_name='distribution',
     save_distribution(all_angles, output_dir + plot_name)
 
 if __name__ == "__main__":
-    # plot_example_batch()
-    plot_distribution()
+    plot_example_batch()
+    #plot_distribution()
