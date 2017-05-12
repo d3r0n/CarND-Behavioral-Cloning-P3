@@ -1,6 +1,5 @@
 input*
 windows_sim
-*.h5
 *.yaml
 __pycache__
 output*
