@@ -1,4 +1,5 @@
 input*
+movie
 windows_sim
 *.yaml
 __pycache__

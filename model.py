@@ -1,16 +1,16 @@
 # %% IMPORTS & SETTINGS
 import os
-os.environ["CUDA_DEVICE_ORDER"] = "blahblah" # it will not find device and rollback to CPU
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# os.environ["CUDA_DEVICE_ORDER"] = "blahblah" # it will not find device and rollback to CPU
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import matplotlib
-matplotlib.use('Agg') #without this you need X server to run. FYI Amazon will fail.
-import matplotlib.pyplot as plt #this must be after matplotlib.use('Agg') !
+matplotlib.use('Agg')  #without this you need X server to run. FYI Amazon will fail.
+import matplotlib.pyplot as plt  #this must be after matplotlib.use('Agg') !
 import numpy as np
 import tensorflow as tf
 from keras import optimizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-from keras.layers import (ELU, BatchNormalization, Convolution2D, Cropping2D,
-                          Dense, Dropout, Flatten, Lambda, MaxPooling2D)
+from keras.layers import (ELU, BatchNormalization, Convolution2D, Cropping2D, Dense, Dropout, Flatten, Lambda,
+                          MaxPooling2D)
 from keras.models import Model, Sequential
 from keras.utils import plot_model
 
@@ -27,14 +27,17 @@ def plot_loss(history_object, to_file):
     plt.legend(['training set', 'validation set'], loc='upper right')
     plt.savefig(to_file)
 
+
 # %% LOAD AND SAVE INPUT DATA
 input_dir = './input_v7/'
 output_dir = './output_v7/'
 load_model = 'model.176-0.0290.h5'
 input = Input.from_file(input_dir)
 data = Data(input)
+
 # data.save(input_dir)
 # data = Data.from_file(input_dir)
+
 
 # %% MAKE MODEL
 def make_model():
@@ -53,11 +56,11 @@ def make_model():
     model.add(Dropout(0.4))
     #Conv 4
     model.add(Convolution2D(64, (3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2,2)))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.5))
     #Conv 5
     model.add(Convolution2D(64, (3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2,2)))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.5))
 
     model.add(Flatten())
@@ -92,10 +95,9 @@ model.compile(loss='mse', optimizer=adam)
 model_file = 'model.{epoch:02d}-{val_loss:.4f}.h5'
 model_checkpoint = ModelCheckpoint(
     output_dir + model_file, monitor='val_loss', verbose=0, save_best_only=True, save_weights_only=False, period=1)
-early_stopping = EarlyStopping(
-    monitor='val_loss', min_delta=1e-4, patience=30, verbose=0, mode='auto')
+early_stopping = EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=30, verbose=0, mode='auto')
 tensorboard = TensorBoard(
-    log_dir= output_dir + 'logs', histogram_freq=1, write_graph=True, write_images=True, embeddings_freq=1)
+    log_dir=output_dir + 'logs', histogram_freq=1, write_graph=True, write_images=True, embeddings_freq=1)
 
 train_generator = BatchGenerator(data, 'training', batch_size=256)
 valid_generator = BatchGenerator(data, 'validation', batch_size=256)
